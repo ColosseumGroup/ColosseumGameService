@@ -10,7 +10,6 @@ Copyright (C) 2011 by the Computer Poker Research Group, University of Alberta
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "renju.h"
-#include "rng.h"
 
 
 void initState( MatchState *state )
@@ -22,7 +21,7 @@ void initState( MatchState *state )
 }
 void resetState( MatchState *state )
 {
-  state->boardState->clearBoard();
+  clearBoard(state->boardState);
   state->numActions = 0;
   state->numRounds = 1;
   state->firstPlayer = (state->firstPlayer==1)?2:1;
@@ -35,9 +34,11 @@ static uint8_t nextPlayer( const MatchState *state)
 
 int checkLine(const MatchState *state, const Cordinate cor, const uint8_t secondCol, const uint8_t secondRow)
 {
+	Cordinate tempCor;
+	tempCor.col = secondCol; tempCor.row = secondRow;
   if(cor.row==secondRow&&cor.col==secondCol)
     return 1;
-  if(state->boardState->getPiece(cor)!=state->boardState->getPiece(secondCol,secondRow))
+  if(getPiece(state->boardState,cor)!=getPiece(state->boardState, tempCor))
     return 0;
   uint8_t next_row,next_col;
   if(secondRow<cor.row)
@@ -57,9 +58,7 @@ int checkLine(const MatchState *state, const Cordinate cor, const uint8_t second
   return checkLine(state,cor,next_col,next_row);
 }
 
-int checkWinningPiece(const MatchState *state, const std::unordered_map<Cordinate,uint8_t>::iterator piece){
-  Cordinate cor = piece->first;
-  uint8_t type = piece->second;
+int checkWinningPiece(const MatchState *state, const Cordinate cor, const uint8_t type){
   //检查边界五点
   return checkLine(state,cor,cor.col-5,cor.row)
   ||checkLine(state,cor,cor.col-5,cor.row-5)
@@ -93,10 +92,10 @@ int matchStatesEqual( const MatchState *a, const MatchState *b )
 
 int isValidAction( const MatchState *curState,const Action *action )
 {
-  if(!action->cor.isValidCordinate())
+  if(!isValidCordinate(action->cor))
     return 0;
   //找不到点就是合法的
-  if(!curState->boardState->getPiece(action->cor,action->type)){
+  if(getPiece(curState->boardState,action->cor)!=action->type){
     return 1;
   }else{
     return 0;
@@ -107,7 +106,7 @@ int isValidAction( const MatchState *curState,const Action *action )
 void doAction( const Action *action, MatchState *state )
 {
   if(isValidAction(state,action)){
-    state->boardState->addPiece(action->cor,action->type);
+    addPiece(state->boardState,action->cor,action->type);
     ++state->numActions;
     if(state->currentPlayer==state->firstPlayer)
       ++state->numRounds;
@@ -118,11 +117,15 @@ void doAction( const Action *action, MatchState *state )
 }
 int isWin(const MatchState *state, const uint8_t type)
 {
-  for(auto p : state->boardState->board){
-    //只检查刚刚下子的点
-    if(checkWinningPiece(state, p)&&p->second==type)
-      return 1;
-  }
+	Cordinate temp;
+	for (; temp.col < BOARD_SIZE; temp.col++) {
+		for (; temp.row < BOARD_SIZE; temp.row++) {
+			if (getPiece(state->boardState,temp)==type) {
+				if (checkWinningPiece(state, temp, type))
+					return 1;
+			}
+		}
+	}
   return 0;
 }
 

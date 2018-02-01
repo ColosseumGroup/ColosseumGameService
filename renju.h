@@ -6,9 +6,7 @@ Copyright (C) 2011 by the Computer Poker Research Group, University of Alberta
 #define _RENJU_H
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
-#include "rng.h"
 #include "net.h"
-#include <unordered_map>
 
 #define VERSION_MAJOR 2
 #define VERSION_MINOR 0
@@ -25,11 +23,12 @@ Copyright (C) 2011 by the Computer Poker Research Group, University of Alberta
 typedef struct {
   uint8_t col;
   uint8_t row;
-  int isValidCordinate(){
-    return !(col<0||col>BOARD_SIZE||row<0||row>BOARD_SIZE);
-  };
+
 }Cordinate;
 
+int isValidCordinate(Cordinate cor) {
+	return !(cor.col<0 || cor.col>BOARD_SIZE || cor.row<0 || cor.row>BOARD_SIZE);
+};
 
 typedef struct {
   uint8_t type;
@@ -38,38 +37,27 @@ typedef struct {
 
 
 typedef struct {
-  //棋局应该比较稀疏
-  std::unordered_map<Cordinate,uint8_t> board;
-  
-  uint8_t getPiece(Cordinate cor){
-    if(board.find(cor)==board.end()){
-      return 0;
-    }else{
-      return board[cor];
-    }
-    return getPiece(cor.col,cor.row);
-  };
-  uint8_t getPiece(uint8_t col,uint8_t row){
-    Cordinate temp;
-    temp.col = col;
-    temp.row = row;
-    return getPiece(temp);
-  };
-  uint8_t addPiece(Cordinate cor,uint8_t type){
-    if(!cor.isValidCordinate())
-      return 0;
-    if(!getPiece(cor)){
-      board[cor] = type;
-      return 1;
-    }else{
-      return 0;
-    }
-  }
-  void clearBoard(){
-    board.clear();
-  }
+  uint8_t board[BOARD_SIZE*BOARD_SIZE];
 }BoardState;
 
+uint8_t getPiece(BoardState* bs, Cordinate cor) {
+	if (cor.col*BOARD_SIZE + cor.row > BOARD_SIZE*BOARD_SIZE)
+		return 3;   //应该没有“3”状态，故为错误
+	return bs->board[cor.col*BOARD_SIZE + cor.row];
+};
+uint8_t addPiece(BoardState*bs, Cordinate cor, uint8_t type) {
+	if (!isValidCordinate(cor))
+		return 0;
+	if (!getPiece(bs,cor)) {
+		bs->board[cor.col*BOARD_SIZE + cor.row] = type;
+		return 1;
+	} else {
+		return 0;
+	}
+}
+void clearBoard(BoardState*bs) {
+	memset(bs->board, 0, (BOARD_SIZE*BOARD_SIZE * sizeof(uint8_t)));
+}
 
 typedef struct {
   //保存棋局信息
@@ -93,15 +81,15 @@ void initState( MatchState *state );
 int matchStatesEqual( const MatchState *a, const MatchState *b );
 
 /* 检查是不是把棋子下在了已有棋子上 */
-int isValidAction( const MatchState *curState, Action *action );
+int isValidAction(const MatchState *curState, const Action *action);
 
 void doAction( const Action *action, MatchState *state );
 
 /* 返回0为无玩家胜利，返回1为执黑玩家胜，返回2为执白玩家胜*/
-int isWin(const MatchState *state);
+int isWin(const MatchState *state, const uint8_t type);
 
 /* 检查该是否能取胜 */
-int checkWinningPiece(const MatchState *state, const std::unordered_map<Cordinate,uint8_t>::iterator piece);
+int checkWinningPiece(const MatchState *state, const Cordinate cor , const uint8_t type);
 
 /* 检查某一条线是否为五连 */
 int checkLine(const MatchState *state, const Cordinate cor, const uint8_t secondCol, const uint8_t secondRow);
