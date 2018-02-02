@@ -89,8 +89,8 @@ void initState( MatchState *state );
 void resetState(MatchState *state);
 /* 检查是不是把棋子下在了已有棋子上 */
 int isValidAction(const MatchState *curState, const Action *action);
-
-void doAction( const Action *action, MatchState *state );
+/* 包含对下子类型的推断，下子合法性，下子后的状态变化 */
+void doAction( Action *action, MatchState *state );
 
 /* 返回0为无玩家胜利，返回1为执黑玩家胜，返回2为执白玩家胜*/
 int isWin(const MatchState *state, const uint8_t type);

@@ -100,13 +100,19 @@ int isValidAction( const MatchState *curState,const Action *action )
 }
 
 
-void doAction( const Action *action, MatchState *state )
+void doAction( Action *action, MatchState *state )
 {
   if(isValidAction(state,action)){
-    addPiece(state->boardState,action->cor,action->type);
+    //确认合法，故可以先做状态转移，再加子
     ++state->numActions;
-    if(state->currentPlayer==state->firstPlayer)
+    if(state->currentPlayer==state->firstPlayer){
+      action->type = 1;
       ++state->numRounds;
+    }else{
+      action->type = 2;
+    }
+    addPiece(state->boardState,action->cor,action->type);
+    state->currentPlayer = (state->currentPlayer==1)?2:1;
 	/*做完动作检查是否已经胜利*/
 	state->finished = isWin(state, action->type);
   }else{
@@ -132,7 +138,7 @@ int printMatchCommonState( const MatchState *state,
 {
 	uint8_t tempNum;
 	int c,t;
-	/* General State: MATCHSTATE:currentplayer:currentGames:currentRounds:finishedFlag */
+	/* General State: MATCHSTATE:viewingplayer:currentplayer:currentGames:currentRounds:finishedFlag */
 	/* HEADER = MATCHSTATE:viewingplayer */
 	if (sscanf(string, "MATCHSTATE:%"SCNu8"%n",
 		&tempNum, &c) < 1
@@ -182,7 +188,7 @@ int readAction( const char *string, Action *action )
 {
 	int c=0, t;
 	uint8_t tempNum;
-	/* General Action: col/row/type */
+	/* General Action: col/row */
 	/*:col*/
 	if (sscanf(string , ":%"SCNu8"%n", &tempNum, &t) < 1) {
 		return -1;
@@ -197,12 +203,6 @@ int readAction( const char *string, Action *action )
 	action->cor.row = tempNum;
 	c += t;
 
-	/* type */
-	if (sscanf(string + c, "/%"SCNu8"%n", &tempNum, &t) < 1) {
-		return -1;
-	}
-	action->type = tempNum;
-	c += t;
 	return c;
 }
 
