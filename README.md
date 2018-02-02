@@ -42,5 +42,6 @@ S-> MATCHSTATE:0:30:cc/r250c/r500c/r1250:9s8h|/8c8d5c/6s/2d
 S-> MATCHSTATE:0:30:cc/r250c/r500c/r1250c:9s8h|9c6h/8c8d5c/6s/2d
 
 ## Renju
-MATCHSTATE:player:numGames:numRounds:finishedFlag:col/row/type
+General State: MATCHSTATE:currentplayer:currentGames:currentRounds:finishedFlag:col/row/type
+Final State: MATCHSTATE:currentplayer:currentGames:currentRounds:finishedFlag
 ##

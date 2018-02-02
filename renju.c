@@ -127,18 +127,24 @@ int isWin(const MatchState *state, const uint8_t type)
   return 0;
 }
 
-int readMatchState( const char *string,
-		    MatchState *state )
+int printMatchCommonState( const MatchState *state,
+		     const int maxLen, char *string )
 {
 	uint8_t tempNum;
 	int c,t;
 	/* General State: MATCHSTATE:currentplayer:currentGames:currentRounds:finishedFlag */
-	/* HEADER = MATCHSTATE:player */
+	/* HEADER = MATCHSTATE:viewingplayer */
 	if (sscanf(string, "MATCHSTATE:%"SCNu8"%n",
 		&tempNum, &c) < 1
+		|| state->viewingPlayer != tempNum) {
+		return -1;
+	}
+  /*:currentplayer*/
+	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
 		|| state->currentPlayer != tempNum) {
 		return -1;
 	}
+	c += t;
 	/*:games*/
 	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
 		|| state->numGames != tempNum) {
@@ -157,89 +163,18 @@ int readMatchState( const char *string,
 		return -1;
 	}
 	c += t;
-	
-	return c;
-}
-int printState(const MatchState *state,
-	const int maxLen, char *string) {
-	int c, r;
-
-	c = 0;
-	/* MATCHSTATE:player */
-	r = snprintf(&string[c], maxLen - c, "MATCHSTATE:%"PRIu8,
-		state->currentPlayer);
-	if (r < 0) {
-		return -1;
-	}
-	c += r;
-	/* :numGames */
-	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
-		state->numGames);
-	if (r < 0) {
-		return -1;
-	}
-	c += r;
-	/* :numRounds */
-	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
-		state->numRounds);
-	if (r < 0) {
-		return -1;
-	}
-	c += r;
-	/* :finishedFlag */
-	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
-		state->finished);
-	if (r < 0) {
-		return -1;
-	}
-	c += r;
-	if (c >= maxLen) {
-		return -1;
-	}
-	string[c] = 0;
-	return c;
+  return c;
 }
 
-int printMatchState( const MatchState *state,
-		     const int maxLen, char *string )
+int printMatchState( const char *string,const int maxLen,
+		    MatchState *state )
 {
-	int c, r;
-
-	c = 0;
-	/* MATCHSTATE:player */
-	r = snprintf(&string[c], maxLen - c, "MATCHSTATE:%"PRIu8,
-		state->currentPlayer);
-	if (r < 0) {
-		return -1;
-	}
-	c += r;
-	/* :numGames */
-	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
-		state->numGames);
-	if (r < 0) {
-		return -1;
-	}
-	c += r;
-	/* :numRounds */
-	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
-		state->numRounds);
-	if (r < 0) {
-		return -1;
-	}
-	c += r;
-	/* :finishedFlag */
-	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
-		state->finished);
-	if (r < 0) {
-		return -1;
-	}
-	c += r;
-	r = printAction(state->boardState->lastAction, maxLen - c, string + c);
-	c += r;
-	if (c >= maxLen) {
-		return -1;
-	}
-	string[c] = 0;
+	int c,t;
+  c=0;
+  t = printMatchCommonState(state,maxLen,string);
+  c += t;
+  t = printAction(state->boardState->lastAction, maxLen - c, string + c);
+	c += t;
 	return c;
 }
 

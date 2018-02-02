@@ -549,13 +549,14 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 			currentP = currentPlayer(&state);
 			/* send state to each player */
 			for (player = 0; player < MAX_PLAYERS; ++player) {
+				state->viewingPlayer = player + 1;
 				if (sendPlayerMessage(&state, quiet, player,
 					seatFD[player], &t) < 0) {
 					/* error messages already handled in function */
 					return -1;
 				}
 				/* remember the seat and send time if player is acting */
-				if (player == currentP) {
+				if (player + 1 == currentP) {
 					sendTime = t;
 				}
 			}
@@ -590,6 +591,7 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 
 		/* send final state to each player */
 		for (player = 0; player < MAX_PLAYERS; ++player) {
+			state->viewingPlayer = player + 1;
 			if (sendPlayerMessage(&state, quiet, player,
 				seatFD[player], &t) < 0) {
 				/* error messages already handled in function */

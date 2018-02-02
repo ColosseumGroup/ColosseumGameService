@@ -71,6 +71,8 @@ typedef struct {
   uint8_t numActions;
   //记录回合次数
   uint8_t numRounds;
+  //当前应该发送消息至玩家号
+  uint8_t viewingPlayer;
   //当前玩家
   uint8_t currentPlayer;
   //先手玩家
