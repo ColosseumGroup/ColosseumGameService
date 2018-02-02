@@ -255,7 +255,6 @@ static int readPlayerResponse(const MatchState *state,
 			continue;
 		}
 
-		//这里还要改，一个字符不够
 		/* get the action */
 		if (line[c++] != ':' || (r = readAction(&line[c], action)) < 0) {
 			if (checkErrorInvalidAction(player, errorInfo) < 0) {
@@ -511,16 +510,15 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 	ReadBuf *readBuf[MAX_PLAYERS],
 	FILE *logFile, FILE *transactionFile)
 {
-	uint32_t handId;
-	uint8_t seat, p, player0Seat, currentP, currentSeat;
+	uint8_t player, currentP;
 	struct timeval t, sendTime, recvTime;
 	Action action;
 	MatchState state;
-	int value[MAX_PLAYERS], totalValue[MAX_PLAYERS];
+	int totalValue[MAX_PLAYERS];
 
 	/* check version string for each player */
-	for (seat = 0; seat < MAX_PLAYERS; ++seat) {
-		if (checkVersion(seat, readBuf[seat]) < 0) {
+	for (player = 0; player < MAX_PLAYERS; ++player) {
+		if (checkVersion(player, readBuf[player]) < 0) {
 			/* error messages already handled in function */
 			return -1;
 		}
@@ -532,14 +530,13 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 			sendTime.tv_sec, sendTime.tv_usec);
 	}
 
-	/* start at the first hand */
-	handId = 0;
+	/* start at the first game */
 	initState(&state);
-	for (seat = 0; seat < MAX_PLAYERS; ++seat) {
-		totalValue[seat] = 0;
+	for (player = 0; player < MAX_PLAYERS; ++player) {
+		totalValue[player] = 0;
 	}
 
-	if (handId >= numHands) {
+	if (state.numGames >= numHands) {
 		goto finishedGameLoop;
 	}
 
@@ -551,21 +548,21 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 			/* find the current player */
 			currentP = currentPlayer(&state);
 			/* send state to each player */
-			for (seat = 0; seat < MAX_PLAYERS; ++seat) {
-				if (sendPlayerMessage(&state, quiet, seat,
-					seatFD[seat], &t) < 0) {
+			for (player = 0; player < MAX_PLAYERS; ++player) {
+				if (sendPlayerMessage(&state, quiet, player,
+					seatFD[player], &t) < 0) {
 					/* error messages already handled in function */
 					return -1;
 				}
 				/* remember the seat and send time if player is acting */
-				if (seat == currentP) {
+				if (player == currentP) {
 					sendTime = t;
 				}
 			}
 
 			/* get action from current player */
 			if (readPlayerResponse(&state, quiet, currentP, &sendTime,
-				errorInfo, readBuf[currentSeat],
+				errorInfo, readBuf[currentP],
 				&action, &recvTime) < 0) {
 				/* error messages already handled in function */
 				return -1;
@@ -585,23 +582,24 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 
 		/* add the game to the log */
 		if (logFile != NULL) {
-			if (addToLogFile(&state, value, seatName, logFile) < 0) {
+			if (addToLogFile(&state, totalValue, seatName, logFile) < 0) {
 				/* error messages already handled in function */
 				return -1;
 			}
 		}
 
 		/* send final state to each player */
-		for (seat = 0; seat < MAX_PLAYERS; ++seat) {
-			if (sendPlayerMessage(&state, quiet, seat,
-				seatFD[seat], &t) < 0) {
+		for (player = 0; player < MAX_PLAYERS; ++player) {
+			if (sendPlayerMessage(&state, quiet, player,
+				seatFD[player], &t) < 0) {
 				/* error messages already handled in function */
 				return -1;
 			}
 		}
 		/* start a new hand */
-
-		if (handId >= numHands) {
+		++totalValue[state.finished - 1];  // 记录胜利者
+		resetState(&state); //局数加一在这里完成
+		if (state.numGames >= numHands) {
 			break;
 		}
 	}

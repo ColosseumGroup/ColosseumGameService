@@ -77,11 +77,14 @@ typedef struct {
   uint8_t firstPlayer;
   //结束flag,0无胜，1，2对应黑白胜，-1错误完成
   uint8_t finished;
+  //对局次数
+  uint32_t numGames;
 } MatchState;
 
-/*初始化棋局状态，为下一局做准备*/
+/*初始化棋局状态*/
 void initState( MatchState *state );
-
+/*单次对局完成重置棋盘信息*/
+void resetState(MatchState *state);
 /* 检查是不是把棋子下在了已有棋子上 */
 int isValidAction(const MatchState *curState, const Action *action);
 

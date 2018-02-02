@@ -14,6 +14,7 @@ Copyright (C) 2011 by the Computer Poker Research Group, University of Alberta
 
 void initState( MatchState *state )
 {
+	state->numGames = 0;
   state->numActions = 0;
   state->numRounds = 1;
   state->firstPlayer = 1;
@@ -26,6 +27,7 @@ void resetState( MatchState *state )
   state->numRounds = 1;
   state->firstPlayer = (state->firstPlayer==1)?2:1;
   state->currentPlayer = state->firstPlayer;
+  ++state->numGames;
 }
 static uint8_t nextPlayer( const MatchState *state)
 {
@@ -130,16 +132,28 @@ int readMatchState( const char *string,
 {
 	uint8_t tempNum;
 	int c,t;
-	/* General State: MATCHSTATE:currentplayer:currentRounds */
+	/* General State: MATCHSTATE:currentplayer:currentGames:currentRounds:finishedFlag */
 	/* HEADER = MATCHSTATE:player */
 	if (sscanf(string, "MATCHSTATE:%"SCNu8"%n",
 		&tempNum, &c) < 1
 		|| state->currentPlayer != tempNum) {
 		return -1;
 	}
+	/*:games*/
+	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
+		|| state->numGames != tempNum) {
+		return -1;
+	}
+	c += t;
 	/*:rounds*/
 	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
 		|| state->numRounds != tempNum) {
+		return -1;
+	}
+	c += t;
+	/*:finishedflag*/
+	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
+		|| state->finished != tempNum) {
 		return -1;
 	}
 	c += t;
@@ -154,6 +168,13 @@ int printState(const MatchState *state,
 	/* MATCHSTATE:player */
 	r = snprintf(&string[c], maxLen - c, "MATCHSTATE:%"PRIu8,
 		state->currentPlayer);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	/* :numGames */
+	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
+		state->numGames);
 	if (r < 0) {
 		return -1;
 	}
@@ -188,6 +209,13 @@ int printMatchState( const MatchState *state,
 	/* MATCHSTATE:player */
 	r = snprintf(&string[c], maxLen - c, "MATCHSTATE:%"PRIu8,
 		state->currentPlayer);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	/* :numGames */
+	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
+		state->numGames);
 	if (r < 0) {
 		return -1;
 	}
