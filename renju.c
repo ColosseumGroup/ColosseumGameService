@@ -85,11 +85,6 @@ uint8_t numAction( const MatchState *state )
   return state->numActions;
 }
 
-int matchStatesEqual( const MatchState *a, const MatchState *b )
-{
-  return 0;
-}
-
 int isValidAction( const MatchState *curState,const Action *action )
 {
   if(!isValidCordinate(action->cor))
@@ -110,9 +105,10 @@ void doAction( const Action *action, MatchState *state )
     ++state->numActions;
     if(state->currentPlayer==state->firstPlayer)
       ++state->numRounds;
+	/*做完动作检查是否已经胜利*/
+	state->finished = isWin(state, action->type);
   }else{
-    //重发信息
-    //还是乱下一个？
+	  state->finished = -1;
   }
 }
 int isWin(const MatchState *state, const uint8_t type)
@@ -122,7 +118,7 @@ int isWin(const MatchState *state, const uint8_t type)
 		for (; temp.row < BOARD_SIZE; temp.row++) {
 			if (getPiece(state->boardState,temp)==type) {
 				if (checkWinningPiece(state, temp, type))
-					return 1;
+					return type;   //确认胜利，返回胜利的类型
 			}
 		}
 	}
@@ -132,36 +128,149 @@ int isWin(const MatchState *state, const uint8_t type)
 int readMatchState( const char *string,
 		    MatchState *state )
 {
-  
+	uint8_t tempNum;
+	int c,t;
+	/* General State: MATCHSTATE:currentplayer:currentRounds */
+	/* HEADER = MATCHSTATE:player */
+	if (sscanf(string, "MATCHSTATE:%"SCNu8"%n",
+		&tempNum, &c) < 1
+		|| state->currentPlayer != tempNum) {
+		return -1;
+	}
+	/*:rounds*/
+	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
+		|| state->numRounds != tempNum) {
+		return -1;
+	}
+	c += t;
+	
+	return c;
 }
+int printState(const MatchState *state,
+	const int maxLen, char *string) {
+	int c, r;
 
-
-int printState( const MatchState *state,
-		const int maxLen, char *string )
-{
-  
+	c = 0;
+	/* MATCHSTATE:player */
+	r = snprintf(&string[c], maxLen - c, "MATCHSTATE:%"PRIu8,
+		state->currentPlayer);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	/* :numRounds */
+	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
+		state->numRounds);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	/* :finishedFlag */
+	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
+		state->finished);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	if (c >= maxLen) {
+		return -1;
+	}
+	string[c] = 0;
+	return c;
 }
 
 int printMatchState( const MatchState *state,
 		     const int maxLen, char *string )
 {
-  
+	int c, r;
+
+	c = 0;
+	/* MATCHSTATE:player */
+	r = snprintf(&string[c], maxLen - c, "MATCHSTATE:%"PRIu8,
+		state->currentPlayer);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	/* :numRounds */
+	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
+		state->numRounds);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	/* :finishedFlag */
+	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
+		state->finished);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	r = printAction(state->boardState->lastAction, maxLen - c, string + c);
+	c += r;
+	if (c >= maxLen) {
+		return -1;
+	}
+	string[c] = 0;
+	return c;
 }
 
 int readAction( const char *string, Action *action )
 {
+	int c=0, t;
+	uint8_t tempNum;
+	/* General Action: col/row/type */
+	/*:col*/
+	if (sscanf(string , ":%"SCNu8"%n", &tempNum, &t) < 1) {
+		return -1;
+	}
+	action->cor.col = tempNum;
+	c += t;
 
+	/* row */
+	if (sscanf(string+c, "/%"SCNu8"%n", &tempNum, &t) < 1) {
+		return -1;
+	}
+	action->cor.row = tempNum;
+	c += t;
+
+	/* type */
+	if (sscanf(string + c, "/%"SCNu8"%n", &tempNum, &t) < 1) {
+		return -1;
+	}
+	action->type = tempNum;
+	c += t;
+	return c;
 }
 
 int printAction( const Action *action,
 		 const int maxLen, char *string )
 {
-  
-}
-
-
-int printBoards( const MatchState *states,
-		const int maxLen, char *string )
-{
-
+	int c, r;
+	c = 0;
+	/* :Action */
+	/* Action = col/row/type */
+	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
+		action->cor.col);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	r = snprintf(&string[c], maxLen - c, "/%"PRIu8,
+		action->cor.row);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	r = snprintf(&string[c], maxLen - c, "/%"PRIu8,
+		action->type);
+	if (r < 0) {
+		return -1;
+	}
+	c += r;
+	if (c >= maxLen) {
+		return -1;
+	}
+	string[c] = 0;
+	return c;
 }

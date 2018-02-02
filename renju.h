@@ -6,6 +6,8 @@ Copyright (C) 2011 by the Computer Poker Research Group, University of Alberta
 #define _RENJU_H
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+#include<string.h>
+
 #include "net.h"
 
 #define VERSION_MAJOR 2
@@ -38,6 +40,7 @@ typedef struct {
 
 typedef struct {
   uint8_t board[BOARD_SIZE*BOARD_SIZE];
+  Action *lastAction;
 }BoardState;
 
 uint8_t getPiece(BoardState* bs, Cordinate cor) {
@@ -50,6 +53,8 @@ uint8_t addPiece(BoardState*bs, Cordinate cor, uint8_t type) {
 		return 0;
 	if (!getPiece(bs,cor)) {
 		bs->board[cor.col*BOARD_SIZE + cor.row] = type;
+		bs->lastAction->cor = cor;
+		bs->lastAction->type = type;
 		return 1;
 	} else {
 		return 0;
@@ -70,15 +75,12 @@ typedef struct {
   uint8_t currentPlayer;
   //先手玩家
   uint8_t firstPlayer;
-  //结束flag
+  //结束flag,0无胜，1，2对应黑白胜，-1错误完成
   uint8_t finished;
 } MatchState;
 
 /*初始化棋局状态，为下一局做准备*/
 void initState( MatchState *state );
-
-
-int matchStatesEqual( const MatchState *a, const MatchState *b );
 
 /* 检查是不是把棋子下在了已有棋子上 */
 int isValidAction(const MatchState *curState, const Action *action);
@@ -103,12 +105,11 @@ uint8_t currentPlayer( const MatchState *state );
 /* the current round */
 uint8_t numRounds( const MatchState *state );
 
-
-
 /* number of actions performed */
 uint8_t numAction( const MatchState *state );
 
-/* returns number of characters consumed on success, -1 on failure
+/* 读一下标识符，并且解析一下状态
+	returns number of characters consumed on success, -1 on failure
    state will be modified even on a failure to read */
 int readMatchState( const char *string, MatchState *state );
 
@@ -134,6 +135,4 @@ int readAction( const char *string, Action *action );
    DOES NOT COUNT FINAL 0 TERMINATOR IN THIS COUNT!!! */
 int printAction( const Action *action,
 		 const int maxLen, char *string );
-
-int printBoards( const MatchState *state, const int maxLen, char *string);
 #endif

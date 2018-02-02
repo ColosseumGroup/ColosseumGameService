@@ -48,11 +48,10 @@ typedef struct
 
 static void printUsage(FILE *file, int verbose)
 {
-	fprintf(file, "usage: dealer matchName gameDefFile #Hands rngSeed p1name p2name ... [options]\n");
+	fprintf(file, "usage: dealer matchName #Hands p1name p2name ... [options]\n");
 	fprintf(file, "  -f use fixed dealer button at table\n");
 	fprintf(file, "  -l/L disable/enable log file - enabled by default\n");
 	fprintf(file, "  -p player1_port,player2_port,... [default is random]\n");
-	fprintf(file, "  -q only print errors, warnings, and final value to stderr\n");
 	fprintf(file, "  -t/T disable/enable transaction file - disabled by default\n");
 	fprintf(file, "  -a append to log/transaction files - disabled by default\n");
 	fprintf(file, "  --t_response [milliseconds] maximum time per response\n");
@@ -154,7 +153,6 @@ static int sendPlayerMessage(const MatchState *state,
 {
 	int c;
 	char line[MAX_LINE_LEN];
-
 	/* prepare the message */
 	c = printMatchState(state, MAX_LINE_LEN, line);
 	if (c < 0 || c > MAX_LINE_LEN - 3) {
@@ -201,7 +199,6 @@ static int readPlayerResponse(const MatchState *state,
 	struct timeval *recvTime)
 {
 	int c, r;
-	MatchState tempState;
 	char line[MAX_LINE_LEN];
 
 	while (1) {
@@ -250,7 +247,7 @@ static int readPlayerResponse(const MatchState *state,
 		}
 
 		/* parse out the state */
-		c = readMatchState(line, &tempState);
+		c = readMatchState(line, state);
 		if (c < 0) {
 			/* couldn't get an intelligible state */
 
@@ -258,12 +255,6 @@ static int readPlayerResponse(const MatchState *state,
 			continue;
 		}
 
-		/* ignore responses that don't match the current state */
-		if (!matchStatesEqual(state, &tempState)) {
-
-			fprintf(stderr, "WARNING: ignoring un-requested response\n");
-			continue;
-		}
 		//这里还要改，一个字符不够
 		/* get the action */
 		if (line[c++] != ':' || (r = readAction(&line[c], action)) < 0) {
@@ -277,7 +268,7 @@ static int readPlayerResponse(const MatchState *state,
 		c += r;
 
 		/* make sure the action is valid */
-		if (!isValidAction(&tempState, action)) {
+		if (!isValidAction(state, action)) {
 			if (checkErrorInvalidAction(player, errorInfo) < 0) {
 				fprintf(stderr, "ERROR: invalid action\n");
 				return -1;
