@@ -11,6 +11,32 @@ Copyright (C) 2011 by the Computer Poker Research Group, University of Alberta
 #include <stdint.h>
 #include "renju.h"
 
+int isValidCordinate(Cordinate cor) {
+	return !(cor.col<0 || cor.col>BOARD_SIZE || cor.row<0 || cor.row>BOARD_SIZE);
+}
+
+uint8_t getPiece(BoardState* bs, Cordinate cor) {
+	if (cor.col*BOARD_SIZE + cor.row > BOARD_SIZE*BOARD_SIZE)
+		return 3;   //应该没有“3”状态，故为错误
+	return bs->board[cor.col*BOARD_SIZE + cor.row];
+}
+
+uint8_t addPiece(BoardState*bs, Cordinate cor, uint8_t type) {
+	if (!isValidCordinate(cor))
+		return 0;
+	if (!getPiece(bs,cor)) {
+		bs->board[cor.col*BOARD_SIZE + cor.row] = type;
+		bs->lastAction->cor = cor;
+		bs->lastAction->type = type;
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+void clearBoard(BoardState*bs) {
+	memset(bs->board, 0, (BOARD_SIZE*BOARD_SIZE * sizeof(uint8_t)));
+}
 
 void initState( MatchState *state )
 {
@@ -29,6 +55,7 @@ void resetState( MatchState *state )
   state->currentPlayer = state->firstPlayer;
   ++state->numGames;
 }
+
 static uint8_t nextPlayer( const MatchState *state)
 {
   return state->currentPlayer%MAX_PLAYERS + 1;
@@ -99,7 +126,6 @@ int isValidAction( const MatchState *curState,const Action *action )
   }
 }
 
-
 void doAction( Action *action, MatchState *state )
 {
   if(isValidAction(state,action)){
@@ -119,6 +145,7 @@ void doAction( Action *action, MatchState *state )
 	  state->finished = -1;
   }
 }
+
 int isWin(const MatchState *state, const uint8_t type)
 {
 	Cordinate temp;
@@ -172,8 +199,8 @@ int printMatchCommonState( const MatchState *state,
   return c;
 }
 
-int printMatchState( const char *string,const int maxLen,
-		    MatchState *state )
+int printMatchState( const MatchState *state,
+		     const int maxLen, char *string )
 {
 	int c,t;
   c=0;
@@ -181,6 +208,60 @@ int printMatchState( const char *string,const int maxLen,
   c += t;
   t = printAction(state->boardState->lastAction, maxLen - c, string + c);
 	c += t;
+	return c;
+}
+
+int readMatchState( const char *string,const MatchState *state)
+{
+	int c=0, t;
+	uint8_t tempNum;
+/* General State: MATCHSTATE:viewingplayer:currentplayer
+:currentGames:currentRounds:finishedFlag */
+/*viewingplayer*/
+	if (sscanf(string , "MATCHSTATE:%"SCNu8"%n", &tempNum, &t) < 1) {
+		return -1;
+	}
+	if(tempNum!=state->viewingPlayer){
+		return -1;
+	}
+	c += t;
+
+	/* currentplayer */
+	if (sscanf(string+c, ":%"SCNu8"%n", &tempNum, &t) < 1) {
+		return -1;
+	}
+	if(tempNum!=state->currentPlayer){
+		return -1;
+	}
+	c += t;
+
+		/* currentGames */
+	if (sscanf(string+c, ":%"SCNu8"%n", &tempNum, &t) < 1) {
+		return -1;
+	}
+	if(tempNum!=state->numGames){
+		return -1;
+	}
+	c += t;
+
+	/* currentRounds */
+	if (sscanf(string+c, ":%"SCNu8"%n", &tempNum, &t) < 1) {
+		return -1;
+	}
+	if(tempNum!=state->numRounds){
+		return -1;
+	}
+	c += t;
+
+	/* finished flag */
+	if (sscanf(string+c, ":%"SCNu8"%n", &tempNum, &t) < 1) {
+		return -1;
+	}
+	if(tempNum!=state->finished){
+		return -1;
+	}
+	c += t;
+
 	return c;
 }
 
@@ -236,4 +317,9 @@ int printAction( const Action *action,
 	}
 	string[c] = 0;
 	return c;
+}
+int printState( const MatchState *state,
+		const int maxLen, char *string )
+{
+	return printMatchState(state,maxLen,string);
 }

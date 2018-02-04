@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -O3 -Wall
 
-PROGRAMS = all_in_expectation bm_run_matches dealer example_player
+PROGRAMS = all_in_expectation bm_run_matches dealer_poker dealer_renju
 
 all: $(PROGRAMS)
 

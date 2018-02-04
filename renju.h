@@ -28,9 +28,7 @@ typedef struct {
 
 }Cordinate;
 
-int isValidCordinate(Cordinate cor) {
-	return !(cor.col<0 || cor.col>BOARD_SIZE || cor.row<0 || cor.row>BOARD_SIZE);
-};
+int isValidCordinate(Cordinate cor);
 
 typedef struct {
   uint8_t type;
@@ -43,26 +41,10 @@ typedef struct {
   Action *lastAction;
 }BoardState;
 
-uint8_t getPiece(BoardState* bs, Cordinate cor) {
-	if (cor.col*BOARD_SIZE + cor.row > BOARD_SIZE*BOARD_SIZE)
-		return 3;   //应该没有“3”状态，故为错误
-	return bs->board[cor.col*BOARD_SIZE + cor.row];
-};
-uint8_t addPiece(BoardState*bs, Cordinate cor, uint8_t type) {
-	if (!isValidCordinate(cor))
-		return 0;
-	if (!getPiece(bs,cor)) {
-		bs->board[cor.col*BOARD_SIZE + cor.row] = type;
-		bs->lastAction->cor = cor;
-		bs->lastAction->type = type;
-		return 1;
-	} else {
-		return 0;
-	}
-}
-void clearBoard(BoardState*bs) {
-	memset(bs->board, 0, (BOARD_SIZE*BOARD_SIZE * sizeof(uint8_t)));
-}
+uint8_t getPiece(BoardState* bs, Cordinate cor);
+uint8_t addPiece(BoardState*bs, Cordinate cor, uint8_t type);
+
+void clearBoard(BoardState*bs);
 
 typedef struct {
   //保存棋局信息
@@ -116,7 +98,7 @@ uint8_t numAction( const MatchState *state );
 /* 读一下标识符，并且解析一下状态
 	returns number of characters consumed on success, -1 on failure
    state will be modified even on a failure to read */
-int readMatchState( const char *string, MatchState *state );
+int readMatchState( const char *string,const MatchState *state );
 
 /* print a state to a string, as viewed by viewingPlayer
    returns the number of characters in string, or -1 on error

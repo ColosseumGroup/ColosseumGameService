@@ -281,37 +281,6 @@ doneRead:
 }
 
 /* returns >= 0 if match should continue, -1 on failure */
-static int logTransaction(const MatchState *state,
-	const Action *action,
-	const struct timeval *sendTime,
-	const struct timeval *recvTime,
-	FILE *file)
-{
-	int c, r;
-	char line[MAX_LINE_LEN];
-	c = printAction(action, MAX_LINE_LEN, line);
-	if (c < 0) {
-		fprintf(stderr, "ERROR: transaction message too long\n");
-		return -1;
-	}
-	r = snprintf(&line[c], MAX_LINE_LEN - c,
-		" %" PRIu32 " %zu.%06zu %zu.%06zu\n",
-		state->numRounds, sendTime->tv_sec, sendTime->tv_usec,
-		recvTime->tv_sec, recvTime->tv_usec);
-	if (r < 0) {
-		fprintf(stderr, "ERROR: transaction message too long\n");
-		return -1;
-	}
-	c += r;
-	if (fwrite(line, 1, c, file) != c) {
-		fprintf(stderr, "ERROR: could not write to transaction file\n");
-		return -1;
-	}
-	fflush(file);
-	return c;
-}
-
-/* returns >= 0 if match should continue, -1 on failure */
 static int checkVersion(const uint8_t player,
 	ReadBuf *readBuf)
 {
@@ -508,7 +477,7 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 	const uint32_t numHands, const int quiet,
 	ErrorInfo *errorInfo, const int seatFD[MAX_PLAYERS],
 	ReadBuf *readBuf[MAX_PLAYERS],
-	FILE *logFile, FILE *transactionFile)
+	FILE *logFile)
 {
 	uint8_t player, currentP;
 	struct timeval t, sendTime, recvTime;
@@ -549,7 +518,7 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 			currentP = currentPlayer(&state);
 			/* send state to each player */
 			for (player = 0; player < MAX_PLAYERS; ++player) {
-				state->viewingPlayer = player + 1;
+				state.viewingPlayer = player + 1;
 				if (sendPlayerMessage(&state, quiet, player,
 					seatFD[player], &t) < 0) {
 					/* error messages already handled in function */
@@ -569,14 +538,6 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 				return -1;
 			}
 
-			/* log the transaction */
-			if (transactionFile != NULL) {
-				if (logTransaction(&state, &action, &sendTime, &recvTime, transactionFile) < 0) {
-					/* error messages already handled in function */
-					return -1;
-				}
-			}
-
 			/* do the action */
 			doAction(&action, &state);
 		}
@@ -591,7 +552,7 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 
 		/* send final state to each player */
 		for (player = 0; player < MAX_PLAYERS; ++player) {
-			state->viewingPlayer = player + 1;
+			state.viewingPlayer = player + 1;
 			if (sendPlayerMessage(&state, quiet, player,
 				seatFD[player], &t) < 0) {
 				/* error messages already handled in function */
@@ -617,9 +578,9 @@ finishedGameLoop:
 int main(int argc, char **argv)
 {
 	int i, listenSocket[MAX_PLAYERS], v, longOpt;
-	int fixedSeats, quiet, append;
+	int quiet, append;
 	int seatFD[MAX_PLAYERS];
-	FILE *file, *logFile, *transactionFile;
+	FILE *file, *logFile;
 	ReadBuf *readBuf[MAX_PLAYERS];
 	ErrorInfo errorInfo;
 	struct sockaddr_in addr;
@@ -629,7 +590,7 @@ int main(int argc, char **argv)
 	int useLogFile, useTransactionFile;
 	uint64_t maxResponseMicros, maxUsedHandMicros, maxUsedPerHandMicros;
 	int64_t startTimeoutMicros;
-	uint32_t numHands, seed, maxInvalidActions;
+	uint32_t numHands, maxInvalidActions;
 	uint16_t listenPort[MAX_PLAYERS];
 
 	struct timeval startTime, tv;
@@ -662,9 +623,6 @@ int main(int argc, char **argv)
 
 	/* by default, overwrite preexisting log/transaction files */
 	append = 0;
-
-	/* players rotate around the table */
-	fixedSeats = 0;
 
 	/* no timeout on startup */
 	startTimeoutMicros = -1;
@@ -853,16 +811,13 @@ int main(int argc, char **argv)
 	}
 	/* play the match */
 	if (gameLoop(seatName, numHands, quiet, &errorInfo,
-		seatFD, readBuf, logFile, transactionFile) < 0) {
+		seatFD, readBuf, logFile) < 0) {
 		/* should have already printed an error message */
 		exit(EXIT_FAILURE);
 	}
 
 	fflush(stderr);
 	fflush(stdout);
-	if (transactionFile != NULL) {
-		fclose(transactionFile);
-	}
 	if (logFile != NULL) {
 		fclose(logFile);
 	}
