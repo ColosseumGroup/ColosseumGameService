@@ -11,23 +11,30 @@ Copyright (C) 2011 by the Computer Poker Research Group, University of Alberta
 #include <stdint.h>
 #include "renju.h"
 
-int isValidCordinate(Cordinate cor) {
-	return !(cor.col<0 || cor.col>BOARD_SIZE || cor.row<0 || cor.row>BOARD_SIZE);
+void initBoardState(BoardState *boardState)
+{
+	boardState->lcol=0;
+	boardState->lrow=0;
+	boardState->ltype=0;
+	for(int i=0;i<BOARD_SIZE*BOARD_SIZE;++i)
+		boardState->board[i] = 0;
 }
 
-uint8_t getPiece(BoardState* bs, Cordinate cor) {
-	if (cor.col*BOARD_SIZE + cor.row > BOARD_SIZE*BOARD_SIZE)
-		return 3;   //应该没有“3”状态，故为错误
-	return bs->board[cor.col*BOARD_SIZE + cor.row];
+
+uint8_t getPiece(const BoardState* bs, const uint8_t col,const uint8_t row) {
+	if((col<0 || col>BOARD_SIZE || row<0 || row>BOARD_SIZE))
+		return 3;  //应该没有“3”状态，故为错误
+	return bs->board[col*BOARD_SIZE + row];
 }
 
-uint8_t addPiece(BoardState*bs, Cordinate cor, uint8_t type) {
-	if (!isValidCordinate(cor))
+uint8_t addPiece(BoardState*bs, const uint8_t col,const uint8_t row,const uint8_t type) {
+	if ((col<0 || col>BOARD_SIZE || row<0 || row>BOARD_SIZE))
 		return 0;
-	if (!getPiece(bs,cor)) {
-		bs->board[cor.col*BOARD_SIZE + cor.row] = type;
-		bs->lastAction->cor = cor;
-		bs->lastAction->type = type;
+	if (!getPiece(bs, col, row)) {
+		bs->board[col*BOARD_SIZE + row] = type;
+		bs->lrow = row;
+		bs->lcol = col;
+		bs->ltype = type;
 		return 1;
 	} else {
 		return 0;
@@ -45,10 +52,11 @@ void initState( MatchState *state )
   state->numRounds = 1;
   state->firstPlayer = 1;
   state->currentPlayer = state->firstPlayer;
+	state->finished = 0;
+	state->viewingPlayer = 1;
 }
 void resetState( MatchState *state )
 {
-  clearBoard(state->boardState);
   state->numActions = 0;
   state->numRounds = 1;
   state->firstPlayer = (state->firstPlayer==1)?2:1;
@@ -61,42 +69,42 @@ static uint8_t nextPlayer( const MatchState *state)
   return state->currentPlayer%MAX_PLAYERS + 1;
 }
 
-int checkLine(const MatchState *state, const Cordinate cor, const uint8_t secondCol, const uint8_t secondRow)
+int checkLine(const BoardState *boardState, const Action *action, const uint8_t secondCol, const uint8_t secondRow)
 {
-	Cordinate tempCor;
-	tempCor.col = secondCol; tempCor.row = secondRow;
-  if(cor.row==secondRow&&cor.col==secondCol)
+	uint8_t tempCol, tempRow;
+	tempCol = secondCol; tempRow = secondRow;
+  if(action->row==secondRow&&action->col==secondCol)
     return 1;
-  if(getPiece(state->boardState,cor)!=getPiece(state->boardState, tempCor))
+  if(getPiece(boardState,action->col,action->row)!=getPiece(boardState, tempCol,tempRow))
     return 0;
   uint8_t next_row,next_col;
-  if(secondRow<cor.row)
+  if(secondRow<action->row)
     next_row = secondRow + 1;
-  else if(secondRow>cor.row)
+  else if(secondRow>action->row)
       next_row = secondRow -1;
     else
       next_row = secondRow;
   
-  if(secondCol<cor.col)
+  if(secondCol<action->col)
     next_col = secondCol + 1;
-    else if(secondCol>cor.col)
+    else if(secondCol>action->col)
       next_col = secondCol - 1;
     else
       next_col = secondCol;
   
-  return checkLine(state,cor,next_col,next_row);
+  return checkLine(boardState,action,next_col,next_row);
 }
 
-int checkWinningPiece(const MatchState *state, const Cordinate cor, const uint8_t type){
+int checkWinningPiece(const BoardState *boardState, const Action *action){
   //检查边界五点
-  return checkLine(state,cor,cor.col-5,cor.row)
-  ||checkLine(state,cor,cor.col-5,cor.row-5)
-  ||checkLine(state,cor,cor.col,cor.row-5)
-  ||checkLine(state,cor,cor.col+5,cor.row)
-  ||checkLine(state,cor,cor.col+5,cor.row+5)
-  ||checkLine(state,cor,cor.col,cor.row+5)
-  ||checkLine(state,cor,cor.col+5,cor.row-5)
-  ||checkLine(state,cor,cor.col-5,cor.row+5);
+  return checkLine(boardState,action,action->col-5,action->row)
+  ||checkLine(boardState,action,action->col-5,action->row-5)
+  ||checkLine(boardState,action,action->col,action->row-5)
+  ||checkLine(boardState,action,action->col+5,action->row)
+  ||checkLine(boardState,action,action->col+5,action->row+5)
+  ||checkLine(boardState,action,action->col,action->row+5)
+  ||checkLine(boardState,action,action->col+5,action->row-5)
+  ||checkLine(boardState,action,action->col-5,action->row+5);
 }
 
 uint8_t currentPlayer( const MatchState *state )
@@ -114,21 +122,19 @@ uint8_t numAction( const MatchState *state )
   return state->numActions;
 }
 
-int isValidAction( const MatchState *curState,const Action *action )
+int isValidAction( const BoardState *boardState,const Action *action )
 {
-  if(!isValidCordinate(action->cor))
-    return 0;
   //找不到点就是合法的
-  if(getPiece(curState->boardState,action->cor)!=action->type){
+  if(getPiece(boardState,action->col,action->row)!=0){
     return 1;
   }else{
     return 0;
   }
 }
 
-void doAction( Action *action, MatchState *state )
+void doAction( Action *action, MatchState *state ,BoardState* boardState )
 {
-  if(isValidAction(state,action)){
+  if(isValidAction(boardState, action)){
     //确认合法，故可以先做状态转移，再加子
     ++state->numActions;
     if(state->currentPlayer==state->firstPlayer){
@@ -137,22 +143,25 @@ void doAction( Action *action, MatchState *state )
     }else{
       action->type = 2;
     }
-    addPiece(state->boardState,action->cor,action->type);
+    addPiece(boardState,action->col,action->row,action->type);
     state->currentPlayer = (state->currentPlayer==1)?2:1;
 	/*做完动作检查是否已经胜利*/
-	state->finished = isWin(state, action->type);
+	state->finished = isWin(boardState, action->type);
   }else{
 	  state->finished = -1;
   }
 }
 
-int isWin(const MatchState *state, const uint8_t type)
+int isWin(const BoardState *boardState, const uint8_t type)
 {
-	Cordinate temp;
-	for (; temp.col < BOARD_SIZE; temp.col++) {
-		for (; temp.row < BOARD_SIZE; temp.row++) {
-			if (getPiece(state->boardState,temp)==type) {
-				if (checkWinningPiece(state, temp, type))
+	Action act;
+	act.type = type;
+	for (int i=0; i < BOARD_SIZE; i++) {
+		for (int j=0; j < BOARD_SIZE; j++) {
+			if (getPiece(boardState,i,j)==type) {
+				act.row = i;
+				act.col = j;
+				if (checkWinningPiece(boardState, &act))
 					return type;   //确认胜利，返回胜利的类型
 			}
 		}
@@ -163,51 +172,66 @@ int isWin(const MatchState *state, const uint8_t type)
 int printMatchCommonState( const MatchState *state,
 		     const int maxLen, char *string )
 {
-	uint8_t tempNum;
-	int c,t;
+	int c,r;
+	c=0;
 	/* General State: MATCHSTATE:viewingplayer:currentplayer:currentGames:currentRounds:finishedFlag */
 	/* HEADER = MATCHSTATE:viewingplayer */
-	if (sscanf(string, "MATCHSTATE:%"SCNu8"%n",
-		&tempNum, &c) < 1
-		|| state->viewingPlayer != tempNum) {
-		return -1;
-	}
+	r = snprintf( string, maxLen - c, "MATCHSTATE:%"SCNu8, state->viewingPlayer );
+  if( r < 0 ) {
+    return -1;
+  }
+  c += r;
+	
   /*:currentplayer*/
-	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
-		|| state->currentPlayer != tempNum) {
-		return -1;
-	}
-	c += t;
+	r = snprintf( string+c, maxLen - c, ":%"SCNu8, state->currentPlayer );
+  if( r < 0 ) {
+    return -1;
+  }
+  c += r;
+	
 	/*:games*/
-	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
-		|| state->numGames != tempNum) {
-		return -1;
-	}
-	c += t;
+	r = snprintf( string+c, maxLen - c, ":%"SCNu8, state->numGames );
+  if( r < 0 ) {
+    return -1;
+  }
+  c += r;
 	/*:rounds*/
-	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
-		|| state->numRounds != tempNum) {
-		return -1;
-	}
-	c += t;
+	r = snprintf( string+c, maxLen - c, ":%"SCNu8, state->numRounds );
+  if( r < 0 ) {
+    return -1;
+  }
+  c += r;
 	/*:finishedflag*/
-	if (sscanf(string + c, ":%"SCNu8"%n", &tempNum, &t) < 1
-		|| state->finished != tempNum) {
-		return -1;
-	}
-	c += t;
+	r = snprintf( string+c, maxLen - c, ":%"SCNu8, state->finished );
+  if( r < 0 ) {
+    return -1;
+  }
+  c += r;
+	if( c >= maxLen ) {
+    return -1;
+  }
+  string[ c ] = 0;
   return c;
 }
 
-int printMatchState( const MatchState *state,
+int printMatchState( const MatchState *state, const BoardState *boardState,
 		     const int maxLen, char *string )
 {
 	int c,t;
   c=0;
   t = printMatchCommonState(state,maxLen,string);
   c += t;
-  t = printAction(state->boardState->lastAction, maxLen - c, string + c);
-	c += t;
+	if(state->numActions!=0){
+		Action act;
+		act.row = boardState->lrow;
+		act.col = boardState->lcol;
+		act.type = boardState->ltype;
+		t = printAction(&act, maxLen - c, string + c);
+		c += t;
+	}else{
+		string[c] = ':';
+		++c;
+	}
 	return c;
 }
 
@@ -221,9 +245,7 @@ int readMatchState( const char *string,const MatchState *state)
 	if (sscanf(string , "MATCHSTATE:%"SCNu8"%n", &tempNum, &t) < 1) {
 		return -1;
 	}
-	if(tempNum!=state->viewingPlayer){
-		return -1;
-	}
+ //viewing player bu zuo pan duan
 	c += t;
 
 	/* currentplayer */
@@ -270,18 +292,19 @@ int readAction( const char *string, Action *action )
 	int c=0, t;
 	uint8_t tempNum;
 	/* General Action: col/row */
-	/*:col*/
-	if (sscanf(string , ":%"SCNu8"%n", &tempNum, &t) < 1) {
+	/*col*/
+	if (sscanf(string , "%"SCNu8"%n", &tempNum, &t) < 1) {
 		return -1;
 	}
-	action->cor.col = tempNum;
+
+	action->col = tempNum;
 	c += t;
 
 	/* row */
 	if (sscanf(string+c, "/%"SCNu8"%n", &tempNum, &t) < 1) {
 		return -1;
 	}
-	action->cor.row = tempNum;
+	action->row = tempNum;
 	c += t;
 
 	return c;
@@ -295,13 +318,13 @@ int printAction( const Action *action,
 	/* :Action */
 	/* Action = col/row/type */
 	r = snprintf(&string[c], maxLen - c, ":%"PRIu8,
-		action->cor.col);
+		action->col);
 	if (r < 0) {
 		return -1;
 	}
 	c += r;
 	r = snprintf(&string[c], maxLen - c, "/%"PRIu8,
-		action->cor.row);
+		action->row);
 	if (r < 0) {
 		return -1;
 	}
@@ -317,9 +340,4 @@ int printAction( const Action *action,
 	}
 	string[c] = 0;
 	return c;
-}
-int printState( const MatchState *state,
-		const int maxLen, char *string )
-{
-	return printMatchState(state,maxLen,string);
 }

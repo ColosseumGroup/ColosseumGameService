@@ -148,13 +148,14 @@ static int checkErrorTimes(const struct timeval *sendTime,
 
 /* returns >= 0 if match should continue, -1 for failure */
 static int sendPlayerMessage(const MatchState *state,
+	const BoardState *boardState,
 	const int quiet, const uint8_t player,
 	const int seatFD, struct timeval *sendTime)
 {
 	int c;
 	char line[MAX_LINE_LEN];
 	/* prepare the message */
-	c = printMatchState(state, MAX_LINE_LEN, line);
+	c = printMatchState(state, boardState, MAX_LINE_LEN, line);
 	if (c < 0 || c > MAX_LINE_LEN - 3) {
 		/* message is too long */
 
@@ -190,6 +191,7 @@ static int sendPlayerMessage(const MatchState *state,
 /* returns >= 0 if action/size has been set to a valid action
 returns -1 for failure (disconnect, timeout, too many bad actions, etc) */
 static int readPlayerResponse(const MatchState *state,
+	const BoardState *boardstate,
 	const int quiet,
 	const uint8_t player,
 	const struct timeval *sendTime,
@@ -260,14 +262,15 @@ static int readPlayerResponse(const MatchState *state,
 			if (checkErrorInvalidAction(player, errorInfo) < 0) {
 				fprintf(stderr, "ERROR: bad action format in response\n");
 			}
-			fprintf(stderr, "WARNING: bad action format in response, changed to call\n");
+			fprintf(stderr, "WARNING: bad action format in response, changed to i dont know what to do 2333\n");
 			action->type = 0;
 			goto doneRead;
 		}
 		c += r;
+//		fprintf(stdout,"info:player:%"PRIu8"%"PRIu8"%"PRIu8"%"PRIu8"\n",player,action->type,action->col,action->row);
 
 		/* make sure the action is valid */
-		if (!isValidAction(state, action)) {
+		if (!isValidAction(boardstate, action)) {
 			if (checkErrorInvalidAction(player, errorInfo) < 0) {
 				fprintf(stderr, "ERROR: invalid action\n");
 				return -1;
@@ -309,6 +312,7 @@ static int checkVersion(const uint8_t player,
 
 /* returns >= 0 if match should continue, -1 on failure */
 static int addToLogFile(const MatchState *state,
+	const BoardState *boardState,
 	const int value[MAX_PLAYERS],
 	char *seatName[MAX_PLAYERS], FILE *logFile)
 {
@@ -317,7 +321,7 @@ static int addToLogFile(const MatchState *state,
 	char line[MAX_LINE_LEN];
 
 	/* prepare the message */
-	c = printState(state, MAX_LINE_LEN, line);
+	c = printMatchState(state, boardState, MAX_LINE_LEN, line);
 	if (c < 0) {
 		/* message is too long */
 
@@ -483,8 +487,9 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 	struct timeval t, sendTime, recvTime;
 	Action action;
 	MatchState state;
+	BoardState boardState;
 	int totalValue[MAX_PLAYERS];
-
+	boardState.board = (uint8_t*)malloc(BOARD_SIZE*BOARD_SIZE*sizeof(uint8_t));
 	/* check version string for each player */
 	for (player = 0; player < MAX_PLAYERS; ++player) {
 		if (checkVersion(player, readBuf[player]) < 0) {
@@ -500,7 +505,9 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 	}
 
 	/* start at the first game */
+
 	initState(&state);
+	initBoardState(&boardState);
 	for (player = 0; player < MAX_PLAYERS; ++player) {
 		totalValue[player] = 0;
 	}
@@ -519,7 +526,7 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 			/* send state to each player */
 			for (player = 0; player < MAX_PLAYERS; ++player) {
 				state.viewingPlayer = player + 1;
-				if (sendPlayerMessage(&state, quiet, player,
+				if (sendPlayerMessage(&state, &boardState, quiet, player,
 					seatFD[player], &t) < 0) {
 					/* error messages already handled in function */
 					return -1;
@@ -531,20 +538,20 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 			}
 
 			/* get action from current player */
-			if (readPlayerResponse(&state, quiet, currentP, &sendTime,
-				errorInfo, readBuf[currentP],
+			if (readPlayerResponse(&state, &boardState, quiet, currentP-1, &sendTime,
+				errorInfo, readBuf[currentP-1],
 				&action, &recvTime) < 0) {
 				/* error messages already handled in function */
 				return -1;
 			}
 
 			/* do the action */
-			doAction(&action, &state);
+			doAction(&action, &state, &boardState);
 		}
 
 		/* add the game to the log */
 		if (logFile != NULL) {
-			if (addToLogFile(&state, totalValue, seatName, logFile) < 0) {
+			if (addToLogFile(&state, &boardState, totalValue, seatName, logFile) < 0) {
 				/* error messages already handled in function */
 				return -1;
 			}
@@ -553,7 +560,7 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 		/* send final state to each player */
 		for (player = 0; player < MAX_PLAYERS; ++player) {
 			state.viewingPlayer = player + 1;
-			if (sendPlayerMessage(&state, quiet, player,
+			if (sendPlayerMessage(&state, &boardState, quiet, player,
 				seatFD[player], &t) < 0) {
 				/* error messages already handled in function */
 				return -1;
@@ -572,6 +579,7 @@ finishedGameLoop:
 		/* error messages already handled in function */
 		return -1;
 	}
+	free(boardState.board);
 	return 0;
 }
 
@@ -696,26 +704,24 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (optind + 3 > argc) {
-
+	if (optind + 2 > argc) {
 		printUsage(stdout, 0);
 		exit(EXIT_FAILURE);
 	}
 
 	/* save the seat names */
-	if (optind + 3 + MAX_PLAYERS > argc) {
-
+	if (optind + 2 + MAX_PLAYERS > argc) {
 		printUsage(stdout, 0);
 		exit(EXIT_FAILURE);
 	}
 	for (i = 0; i < MAX_PLAYERS; ++i) {
-		seatName[i] = argv[optind + 3 + i];
+		seatName[i] = argv[optind + 2 + i];
 	}
 
 	/* get number of hands */
-	if (sscanf(argv[optind + 2], "%" SCNu32, &numHands) < 1 || numHands == 0) {
+	if (sscanf(argv[optind + 1], "%" SCNu32, &numHands) < 1 || numHands == 0) {
 		fprintf(stderr, "ERROR: invalid number of hands %s\n",
-			argv[optind + 2]);
+			argv[optind + 1]);
 		exit(EXIT_FAILURE);
 	}
 

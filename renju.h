@@ -23,32 +23,25 @@ Copyright (C) 2011 by the Computer Poker Research Group, University of Alberta
 #define BOARD_SIZE 15
 
 typedef struct {
+  uint8_t type;
   uint8_t col;
   uint8_t row;
-
-}Cordinate;
-
-int isValidCordinate(Cordinate cor);
-
-typedef struct {
-  uint8_t type;
-  Cordinate cor;
 } Action;
 
-
 typedef struct {
-  uint8_t board[BOARD_SIZE*BOARD_SIZE];
-  Action *lastAction;
+    //保存棋局信息
+  uint8_t* board;
+  uint8_t ltype;
+  uint8_t lcol;
+  uint8_t lrow;
 }BoardState;
-
-uint8_t getPiece(BoardState* bs, Cordinate cor);
-uint8_t addPiece(BoardState*bs, Cordinate cor, uint8_t type);
+void initBoardState(BoardState *boardstate);
+uint8_t getPiece(const BoardState* bs, const uint8_t col,const uint8_t row);
+uint8_t addPiece(BoardState*bs, const uint8_t col,const uint8_t row,const uint8_t type);
 
 void clearBoard(BoardState*bs);
 
 typedef struct {
-  //保存棋局信息
-  BoardState *boardState;
   //保存动作次数
   uint8_t numActions;
   //记录回合次数
@@ -70,18 +63,18 @@ void initState( MatchState *state );
 /*单次对局完成重置棋盘信息*/
 void resetState(MatchState *state);
 /* 检查是不是把棋子下在了已有棋子上 */
-int isValidAction(const MatchState *curState, const Action *action);
+int isValidAction(const BoardState *boardState,const Action *action);
 /* 包含对下子类型的推断，下子合法性，下子后的状态变化 */
-void doAction( Action *action, MatchState *state );
+void doAction( Action *action, MatchState *state ,BoardState* boardState );
 
 /* 返回0为无玩家胜利，返回1为执黑玩家胜，返回2为执白玩家胜*/
-int isWin(const MatchState *state, const uint8_t type);
+int isWin(const BoardState *boardState, const uint8_t type);
 
 /* 检查该是否能取胜 */
-int checkWinningPiece(const MatchState *state, const Cordinate cor , const uint8_t type);
+int checkWinningPiece(const BoardState *boardState, const Action *action);
 
 /* 检查某一条线是否为五连 */
-int checkLine(const MatchState *state, const Cordinate cor, const uint8_t secondCol, const uint8_t secondRow);
+int checkLine(const BoardState *boardState, const Action *action, const uint8_t secondCol, const uint8_t secondRow);
 
 /* returns non-zero if hand is finished, zero otherwise */
 #define stateFinished( constStatePtr ) ((constStatePtr)->finished)
@@ -109,7 +102,7 @@ int printState( const MatchState *state,
 /* print a state to a string, as viewed by viewingPlayer
    returns the number of characters in string, or -1 on error
    DOES NOT COUNT FINAL 0 TERMINATOR IN THIS COUNT!!! */
-int printMatchState( const MatchState *state,
+int printMatchState( const MatchState *state, const BoardState *boardState,
 		     const int maxLen, char *string );
 
 /* read an action, returning the action in the passed pointer
