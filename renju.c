@@ -73,7 +73,7 @@ int checkLine(const BoardState *boardState, const Action *action, const uint8_t 
 	/* with origin piece valid, 
 	when accessing the invalided target which has the output of 3,
 	, the return of the following expression will be false */
-  if(getPiece(boardState,action->col,action->row)!=getPiece(boardState, secondCol,secondCol))
+  if(getPiece(boardState,action->col,action->row)!=getPiece(boardState, secondCol,secondRow))
     return 0;
 
   uint8_t next_row,next_col;
