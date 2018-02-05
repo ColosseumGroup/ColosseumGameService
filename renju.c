@@ -133,8 +133,7 @@ int isValidAction( const BoardState *boardState,const Action *action )
 
 void doAction( Action *action, MatchState *state ,BoardState* boardState )
 {
-  if(isValidAction(boardState, action)){
-    //确认合法，故可以先做状态转移，再加子
+  if(action->type!=3){   //if not give up
     ++state->numActions;
     if(state->currentPlayer==state->firstPlayer){
       action->type = 1;
@@ -147,7 +146,7 @@ void doAction( Action *action, MatchState *state ,BoardState* boardState )
 	/*做完动作检查是否已经胜利*/
 	state->finished = isWin(boardState, action->type);
   }else{
-	  state->finished = 3;
+	  state->finished = (state->currentPlayer==1)?2:1;  //opponent win
   }
 }
 
@@ -305,7 +304,6 @@ int readAction( const char *string, Action *action )
 	}
 	action->row = tempNum;
 	c += t;
-
 	return c;
 }
 int printState( const MatchState *state,const int maxLen, char *string )

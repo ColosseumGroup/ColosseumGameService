@@ -262,16 +262,16 @@ static int readPlayerResponse(const MatchState *state,
 			if (checkErrorInvalidAction(player, errorInfo) < 0) {
 				fprintf(stderr, "ERROR: bad action format in response\n");
 			}
-			fprintf(stderr, "WARNING: bad action format in response, changed to i dont know what to do 2333\n");
-			action->type = 0;
+			fprintf(stderr, "WARNING: bad action format in response, changed to GIVEUP\n");
+			action->type = 3;
 			goto doneRead;
 		}
 		c += r;
 		/* make sure the action is valid */
 		if (!isValidAction(boardstate, action)) {
 			if (checkErrorInvalidAction(player, errorInfo) < 0) {
-				fprintf(stderr, "ERROR: invalid action\n");
-				return -1;
+				fprintf(stderr, "ERROR: invalid action, changed to GIVEUP\n");
+				action->type = 3;
 			}
 		}
 		goto doneRead;

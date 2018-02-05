@@ -23,7 +23,7 @@ Copyright (C) 2011 by the Computer Poker Research Group, University of Alberta
 #define BOARD_SIZE 15
 
 typedef struct {
-  uint8_t type;
+  uint8_t type;  //black=1 or white=2  3 giveup
   uint8_t col;
   uint8_t row;
 } Action;
