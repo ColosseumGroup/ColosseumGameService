@@ -267,8 +267,6 @@ static int readPlayerResponse(const MatchState *state,
 			goto doneRead;
 		}
 		c += r;
-//		fprintf(stdout,"info:player:%"PRIu8"%"PRIu8"%"PRIu8"%"PRIu8"\n",player,action->type,action->col,action->row);
-
 		/* make sure the action is valid */
 		if (!isValidAction(boardstate, action)) {
 			if (checkErrorInvalidAction(player, errorInfo) < 0) {
@@ -321,7 +319,7 @@ static int addToLogFile(const MatchState *state,
 	char line[MAX_LINE_LEN];
 
 	/* prepare the message */
-	c = printMatchState(state, boardState, MAX_LINE_LEN, line);
+	c = printState(state, MAX_LINE_LEN, line);
 	if (c < 0) {
 		/* message is too long */
 
@@ -547,6 +545,8 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 
 			/* do the action */
 			doAction(&action, &state, &boardState);
+			if(state.finished==3)
+				return -1;
 		}
 
 		/* add the game to the log */
@@ -568,7 +568,11 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 		}
 		/* start a new hand */
 		++totalValue[state.finished - 1];  // 记录胜利者
+		for(int j;j<MAX_PLAYERS;++j){
+			fprintf(stderr, "player:%d:%"SCNu8"\n",j,totalValue[j]);
+		}
 		resetState(&state); //局数加一在这里完成
+		initBoardState(&boardState);
 		if (state.numGames >= numHands) {
 			break;
 		}
@@ -588,15 +592,15 @@ int main(int argc, char **argv)
 	int i, listenSocket[MAX_PLAYERS], v, longOpt;
 	int quiet, append;
 	int seatFD[MAX_PLAYERS];
-	FILE *file, *logFile;
+	FILE *logFile;
 	ReadBuf *readBuf[MAX_PLAYERS];
 	ErrorInfo errorInfo;
 	struct sockaddr_in addr;
 	socklen_t addrLen;
 	char *seatName[MAX_PLAYERS];
 
-	int useLogFile, useTransactionFile;
-	uint64_t maxResponseMicros, maxUsedHandMicros, maxUsedPerHandMicros;
+	int useLogFile;
+	uint64_t maxResponseMicros;
 	int64_t startTimeoutMicros;
 	uint32_t numHands, maxInvalidActions;
 	uint16_t listenPort[MAX_PLAYERS];
@@ -624,7 +628,6 @@ int main(int argc, char **argv)
 
 	/* use log file, don't use transaction file */
 	useLogFile = 1;
-	useTransactionFile = 0;
 
 	/* print all messages */
 	quiet = 0;

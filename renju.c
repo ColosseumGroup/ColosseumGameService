@@ -57,26 +57,25 @@ void initState( MatchState *state )
 }
 void resetState( MatchState *state )
 {
+	state->finished = 0;
   state->numActions = 0;
   state->numRounds = 1;
   state->firstPlayer = (state->firstPlayer==1)?2:1;
   state->currentPlayer = state->firstPlayer;
+	state->viewingPlayer = state->firstPlayer;
   ++state->numGames;
-}
-
-static uint8_t nextPlayer( const MatchState *state)
-{
-  return state->currentPlayer%MAX_PLAYERS + 1;
 }
 
 int checkLine(const BoardState *boardState, const Action *action, const uint8_t secondCol, const uint8_t secondRow)
 {
-	uint8_t tempCol, tempRow;
-	tempCol = secondCol; tempRow = secondRow;
   if(action->row==secondRow&&action->col==secondCol)
     return 1;
-  if(getPiece(boardState,action->col,action->row)!=getPiece(boardState, tempCol,tempRow))
+	/* with origin piece valid, 
+	when accessing the invalided target which has the output of 3,
+	, the return of the following expression will be false */
+  if(getPiece(boardState,action->col,action->row)!=getPiece(boardState, secondCol,secondCol))
     return 0;
+
   uint8_t next_row,next_col;
   if(secondRow<action->row)
     next_row = secondRow + 1;
@@ -97,14 +96,14 @@ int checkLine(const BoardState *boardState, const Action *action, const uint8_t 
 
 int checkWinningPiece(const BoardState *boardState, const Action *action){
   //检查边界五点
-  return checkLine(boardState,action,action->col-5,action->row)
-  ||checkLine(boardState,action,action->col-5,action->row-5)
-  ||checkLine(boardState,action,action->col,action->row-5)
-  ||checkLine(boardState,action,action->col+5,action->row)
-  ||checkLine(boardState,action,action->col+5,action->row+5)
-  ||checkLine(boardState,action,action->col,action->row+5)
-  ||checkLine(boardState,action,action->col+5,action->row-5)
-  ||checkLine(boardState,action,action->col-5,action->row+5);
+  return checkLine(boardState,action,action->col-4,action->row)
+  ||checkLine(boardState,action,action->col-4,action->row-4)
+  ||checkLine(boardState,action,action->col,action->row-4)
+  ||checkLine(boardState,action,action->col+4,action->row)
+  ||checkLine(boardState,action,action->col+4,action->row+4)
+  ||checkLine(boardState,action,action->col,action->row+4)
+  ||checkLine(boardState,action,action->col+4,action->row-4)
+  ||checkLine(boardState,action,action->col-4,action->row+4);
 }
 
 uint8_t currentPlayer( const MatchState *state )
@@ -124,8 +123,8 @@ uint8_t numAction( const MatchState *state )
 
 int isValidAction( const BoardState *boardState,const Action *action )
 {
-  //找不到点就是合法的
-  if(getPiece(boardState,action->col,action->row)!=0){
+  //only when a piece is 0 will the location be valid
+  if(getPiece(boardState,action->col,action->row)==0){
     return 1;
   }else{
     return 0;
@@ -148,7 +147,7 @@ void doAction( Action *action, MatchState *state ,BoardState* boardState )
 	/*做完动作检查是否已经胜利*/
 	state->finished = isWin(boardState, action->type);
   }else{
-	  state->finished = -1;
+	  state->finished = 3;
   }
 }
 
@@ -159,8 +158,8 @@ int isWin(const BoardState *boardState, const uint8_t type)
 	for (int i=0; i < BOARD_SIZE; i++) {
 		for (int j=0; j < BOARD_SIZE; j++) {
 			if (getPiece(boardState,i,j)==type) {
-				act.row = i;
-				act.col = j;
+				act.row = j;
+				act.col = i;
 				if (checkWinningPiece(boardState, &act))
 					return type;   //确认胜利，返回胜利的类型
 			}
@@ -309,7 +308,37 @@ int readAction( const char *string, Action *action )
 
 	return c;
 }
-
+int printState( const MatchState *state,const int maxLen, char *string )
+{
+int c,r;
+	c=0;
+	/* General State: MATCHSTATE:currentGames:totalRounds:finishedFlag */
+	/* HEADER = MATCH:currentGames */
+	r = snprintf( string, maxLen - c, "MATCH:%"SCNu8, state->numGames );
+  if( r < 0 ) {
+    return -1;
+  }
+  c += r;
+	
+  /*:totalRounds*/
+	r = snprintf( string+c, maxLen - c, ":%"SCNu8, state->numRounds );
+  if( r < 0 ) {
+    return -1;
+  }
+  c += r;
+	
+	/*:finishedFlag*/
+	r = snprintf( string+c, maxLen - c, ":%"SCNu8, state->finished );
+  if( r < 0 ) {
+    return -1;
+  }
+  c += r;
+	if( c >= maxLen ) {
+    return -1;
+  }
+  string[ c ] = 0;
+  return c;
+}
 int printAction( const Action *action,
 		 const int maxLen, char *string )
 {
