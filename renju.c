@@ -96,14 +96,16 @@ int checkLine(const BoardState *boardState, const Action *action, const uint8_t 
 
 int checkWinningPiece(const BoardState *boardState, const Action *action){
   //检查边界五点
-  return checkLine(boardState,action,action->col-4,action->row)
-  ||checkLine(boardState,action,action->col-4,action->row-4)
-  ||checkLine(boardState,action,action->col,action->row-4)
-  ||checkLine(boardState,action,action->col+4,action->row)
-  ||checkLine(boardState,action,action->col+4,action->row+4)
-  ||checkLine(boardState,action,action->col,action->row+4)
-  ||checkLine(boardState,action,action->col+4,action->row-4)
-  ||checkLine(boardState,action,action->col-4,action->row+4);
+	if(checkLine(boardState,action,action->col-4,action->row)) return 1;
+	if(checkLine(boardState,action,action->col-4,action->row-4)) return 1;
+	if(checkLine(boardState,action,action->col,action->row-4)) return 1;
+	if(checkLine(boardState,action,action->col+4,action->row)) return 1;
+	if(checkLine(boardState,action,action->col+4,action->row+4)) return 1;
+	if(checkLine(boardState,action,action->col,action->row+4)) return 1;
+	if(checkLine(boardState,action,action->col+4,action->row-4)) return 1;
+	if(checkLine(boardState,action,action->col-4,action->row+4)) return 1;
+
+	return 0;
 }
 
 uint8_t currentPlayer( const MatchState *state )
