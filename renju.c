@@ -188,7 +188,7 @@ int printMatchCommonState( const MatchState *state,
   c += r;
 	
 	/*:games*/
-	r = snprintf( string+c, maxLen - c, ":%"SCNu8, state->numGames );
+	r = snprintf( string+c, maxLen - c, ":%"SCNu32, state->numGames );
   if( r < 0 ) {
     return -1;
   }
@@ -237,6 +237,7 @@ int readMatchState( const char *string,const MatchState *state)
 {
 	int c=0, t;
 	uint8_t tempNum;
+	uint32_t tempNum32;
 /* General State: MATCHSTATE:viewingplayer:currentplayer
 :currentGames:currentRounds:finishedFlag */
 /*viewingplayer*/
@@ -256,10 +257,10 @@ int readMatchState( const char *string,const MatchState *state)
 	c += t;
 
 		/* currentGames */
-	if (sscanf(string+c, ":%"SCNu8"%n", &tempNum, &t) < 1) {
+	if (sscanf(string+c, ":%"SCNu32"%n", &tempNum32, &t) < 1) {
 		return -1;
 	}
-	if(tempNum!=state->numGames){
+	if(tempNum32!=state->numGames){
 		return -1;
 	}
 	c += t;
@@ -312,7 +313,7 @@ int c,r;
 	c=0;
 	/* General State: MATCHSTATE:currentGames:totalRounds:finishedFlag */
 	/* HEADER = MATCH:currentGames */
-	r = snprintf( string, maxLen - c, "MATCH:%"SCNu8, state->numGames );
+	r = snprintf( string, maxLen - c, "MATCH:%"SCNu32, state->numGames );
   if( r < 0 ) {
     return -1;
   }
