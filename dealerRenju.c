@@ -568,7 +568,8 @@ static int gameLoop(char *seatName[MAX_PLAYERS],
 		}
 		/* start a new hand */
 		++totalValue[state.finished - 1];  // 记录胜利者
-		for(int j;j<MAX_PLAYERS;++j){
+		int j;
+		for(j = 0;j<MAX_PLAYERS;++j){
 			fprintf(stderr, "player:%d:%"SCNu8"\n",j,totalValue[j]);
 		}
 		resetState(&state); //局数加一在这里完成

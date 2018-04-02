@@ -16,7 +16,8 @@ void initBoardState(BoardState *boardState)
 	boardState->lcol=0;
 	boardState->lrow=0;
 	boardState->ltype=0;
-	for(int i=0;i<BOARD_SIZE*BOARD_SIZE;++i)
+	int i;
+	for(i=0;i<BOARD_SIZE*BOARD_SIZE;++i)
 		boardState->board[i] = 0;
 }
 
@@ -156,8 +157,9 @@ int isWin(const BoardState *boardState, const uint8_t type)
 {
 	Action act;
 	act.type = type;
-	for (int i=0; i < BOARD_SIZE; i++) {
-		for (int j=0; j < BOARD_SIZE; j++) {
+	int i, j;
+	for (i=0; i < BOARD_SIZE; i++) {
+		for (j=0; j < BOARD_SIZE; j++) {
 			if (getPiece(boardState,i,j)==type) {
 				act.row = j;
 				act.col = i;
