@@ -16,7 +16,8 @@ void initBoardState(BoardState *boardState)
 	boardState->lcol=0;
 	boardState->lrow=0;
 	boardState->ltype=0;
-	for(int i=0;i<BOARD_SIZE*BOARD_SIZE;++i)
+	int i;
+	for(i=0;i<BOARD_SIZE*BOARD_SIZE;++i)
 		boardState->board[i] = 0;
 }
 
@@ -48,22 +49,22 @@ void clearBoard(BoardState*bs) {
 void initState( MatchState *state )
 {
 	state->numGames = 0;
-  state->numActions = 0;
-  state->numRounds = 1;
-  state->firstPlayer = 1;
-  state->currentPlayer = state->firstPlayer;
+	state->numActions = 0;
+	state->numRounds = 1;
+	state->firstPlayer = 1;
+	state->currentPlayer = state->firstPlayer;
 	state->finished = 0;
 	state->viewingPlayer = 1;
 }
 void resetState( MatchState *state )
 {
 	state->finished = 0;
-  state->numActions = 0;
-  state->numRounds = 1;
-  state->firstPlayer = (state->firstPlayer==1)?2:1;
-  state->currentPlayer = state->firstPlayer;
+	state->numActions = 0;
+	state->numRounds = 1;
+	state->firstPlayer = (state->firstPlayer==1)?2:1;
+	state->currentPlayer = state->firstPlayer;
 	state->viewingPlayer = state->firstPlayer;
-  ++state->numGames;
+	++state->numGames;
 }
 
 int checkLine(const BoardState *boardState, const Action *action, const uint8_t secondCol, const uint8_t secondRow)
@@ -156,8 +157,9 @@ int isWin(const BoardState *boardState, const uint8_t type)
 {
 	Action act;
 	act.type = type;
-	for (int i=0; i < BOARD_SIZE; i++) {
-		for (int j=0; j < BOARD_SIZE; j++) {
+	int i, j;
+	for (i=0; i < BOARD_SIZE; i++) {
+		for (j=0; j < BOARD_SIZE; j++) {
 			if (getPiece(boardState,i,j)==type) {
 				act.row = j;
 				act.col = i;
